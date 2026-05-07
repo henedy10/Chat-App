@@ -27,6 +27,7 @@ new class extends Component
                     });
             })
             ->with(['user1','user2','lastMessage'])
+            ->withCount('unReadMessages')
             ->get();
     }
 
@@ -34,6 +35,7 @@ new class extends Component
         $this->conversation = Conversation::where('id',$conversationId)
                                         ->with(['user1','user2','messages'])
                                         ->first();
+        $this->conversation->messages()->where('sender_id','!=',Auth::id())->update(['is_read'=>true]);
     }
 };
 ?>
@@ -56,7 +58,7 @@ new class extends Component
     <!-- Search -->
     <div class="p-4">
         <div class="relative">
-            <input type="text" wire:model.live="search" placeholder="Search conversations..."
+            <input type="text" wire:model.live="search" placeholder="Search or Start conversations..."
             class="w-full bg-slate-800/50 border border-white/5 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all">
         </div>
     </div>
@@ -93,15 +95,17 @@ new class extends Component
                     </div>
                     <p class="text-xs text-slate-400 truncate mt-0.5">{{ $conversation->lastMessage->message ?? 'No messages' }}</p>
                 </div>
-                <div class="flex  items-end space-y-1">
-                    <div class="w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center">
-                        <span class="text-[10px] font-bold">2</span>
+                @if($conversation->un_read_messages_count > 0)
+                    <div class="flex  items-end space-y-1">
+                        <div class="w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center">
+                            <span class="text-[10px] font-bold">{{ $conversation->un_read_messages_count }}</span>
+                        </div>
                     </div>
-                </div>
+                @endif
             </div>
         @empty
             <div class="p-4 py-20 text-center">
-                <p class="text-slate-500 text-sm">There is no any conversations match!</p>
+                <p class="text-slate-500 text-sm">There is no any conversations !</p>
             </div>
         @endforelse
     </div>
@@ -275,3 +279,29 @@ new class extends Component
     @endif
 </main>
 </div>
+
+<!-- <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // Mobile Sidebar Toggle
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+            });
+        }
+
+        // Auto-scroll to bottom of messages
+        const container = document.getElementById('messages-container');
+        container.scrollTop = container.scrollHeight;
+
+        // Auto-resize textarea
+        const textarea = document.querySelector('textarea');
+        textarea.addEventListener('input', () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        });
+    </script> -->

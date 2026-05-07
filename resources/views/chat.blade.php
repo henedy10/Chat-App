@@ -90,31 +90,7 @@
     
     @livewire('conversations-search')
 
-    <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
 
-        // Mobile Sidebar Toggle
-        const sidebar = document.getElementById('sidebar');
-        const sidebarToggle = document.getElementById('sidebar-toggle');
-
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('active');
-            });
-        }
-
-        // Auto-scroll to bottom of messages
-        const container = document.getElementById('messages-container');
-        container.scrollTop = container.scrollHeight;
-
-        // Auto-resize textarea
-        const textarea = document.querySelector('textarea');
-        textarea.addEventListener('input', () => {
-            textarea.style.height = 'auto';
-            textarea.style.height = textarea.scrollHeight + 'px';
-        });
-    </script>
     @livewireScripts
 </body>
 

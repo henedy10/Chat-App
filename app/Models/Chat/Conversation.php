@@ -4,6 +4,7 @@ namespace App\Models\Chat;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Conversation extends Model
 {
@@ -29,6 +30,11 @@ class Conversation extends Model
 
     public function lastMessage()
     {
-        return $this->hasOne(Message::class)->latest();
+        return $this->hasOne(Message::class)->latestOfMany();
+    }
+
+    public function unReadMessages()
+    {
+        return $this->hasMany(Message::class)->where('sender_id','!=',Auth::id())->where('is_read',false);
     }
 }
