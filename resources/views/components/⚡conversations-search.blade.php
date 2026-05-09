@@ -5,12 +5,14 @@ use App\Models\User;
 use App\Models\Chat\Conversation;
 use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Chat\Message;
 
 new class extends Component
 {
     public $search = '';
     public $conversation;
-
+    public $message = '';
+    public $selectedConversationId = null;
     #[Computed]
     public function conversations()
     {
@@ -36,6 +38,22 @@ new class extends Component
                                         ->with(['user1','user2','messages'])
                                         ->first();
         $this->conversation->messages()->where('sender_id','!=',Auth::id())->update(['is_read'=>true]);
+        $this->selectedConversationId = $conversationId;
+        $this->dispatch('conversation-updated');
+    }
+
+    public function sendMessage(){
+        $this->validate([
+            'message' => 'required',
+        ]);
+
+        Message::create([
+            'conversation_id' => $this->conversation->id,
+            'sender_id' => Auth::id(),
+            'message' => $this->message,
+        ]);
+
+        $this->reset('message');
     }
 };
 ?>
@@ -51,7 +69,7 @@ new class extends Component
             </div>
             <h1 class="text-xl font-bold tracking-tight">Chat App</h1>
         </div>
-        <button class="p-2 hover:bg-white/5 rounded-lg transition-colors">
+        <button class="p-2 hover:bg-white/5 rounded-lg transition-colors" >
             <i data-lucide="plus-circle" class="w-5 h-5 text-slate-400"></i>
         </button>
     </div>
@@ -65,7 +83,7 @@ new class extends Component
     <!-- Chat List -->
     <div class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
         @forelse ($this->conversations as $conversation)
-            <div class="flex items-center p-3 space-x-4 cursor-pointer rounded-xl transition-all" wire:click="uploadConversation({{$conversation->id}})">
+            <div class="flex items-center p-3 space-x-4 cursor-pointer {{ $conversation->id == $selectedConversationId ? 'bg-indigo-500/10' : 'hover:bg-white/5' }} rounded-xl transition-all" wire:click="uploadConversation({{$conversation->id}})">
                 <div class="relative">
                     <div class="w-12 h-12 rounded-xl bg-slate-700 overflow-hidden">
                         @php
@@ -91,7 +109,7 @@ new class extends Component
                 <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-baseline">
                         <h3 class="font-semibold text-sm truncate">{{$conversation->user1_id == Auth::id() ? $conversation->user2->name : $conversation->user1->name}}</h3>
-                        <span class="text-xs text-slate-500">12:45 PM</span>
+                        <span class="text-xs text-slate-500">{{ $conversation->lastMessage?->created_at->format('h:i A') ?? "N/A"}}</span>
                     </div>
                     <p class="text-xs text-slate-400 truncate mt-0.5">{{ $conversation->lastMessage->message ?? 'No messages' }}</p>
                 </div>
@@ -114,8 +132,17 @@ new class extends Component
         <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-slate-700 overflow-hidden">
-                    <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=100&h=100"
-                        alt="Me" class="w-full h-full object-cover">
+                    @if(Auth::user()->avatar)
+                        <img
+                            src="{{ Auth::user()->avatar }}"
+                            alt="{{ Auth::user()->name }}"
+                            class="w-full h-full object-cover rounded-full"
+                        >
+                    @else
+                        <div class="w-full h-full flex items-center justify-center bg-gray-500 text-white">
+                            {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
+                        </div>
+                    @endif
                 </div>
                 <div class="text-left">
                     <p class="text-sm font-semibold">{{Auth::user()->name}}</p>
@@ -207,7 +234,7 @@ new class extends Component
                         <div class="message-bubble-received p-4 rounded-2xl text-sm leading-relaxed text-slate-200 shadow-sm">
                             {{ $message->message }}
                             </div>
-                            <p class="text-[10px] text-slate-500 ml-1">12:30 PM</p>
+                            <p class="text-[10px] text-slate-500 ml-1">{{ $message->created_at->format('h:i A') }}</p>
                         </div>
                     </div>
                 @else
@@ -231,7 +258,7 @@ new class extends Component
                             {{ $message->message }}
                             </div>
                             <div class="flex items-center justify-end space-x-1 mt-1 mr-1">
-                                <p class="text-[10px] text-slate-500">12:32 PM</p>
+                                <p class="text-[10px] text-slate-500">{{ $message->created_at->format('h:i A') }}</p>
                                 <i data-lucide="check-check" class="w-3 h-3 text-indigo-400"></i>
                             </div>
                         </div>
@@ -245,27 +272,28 @@ new class extends Component
             </div>
         @endif
     <!-- Input Area -->
-    <div class="p-6 bg-slate-950/30">
-        <div class="max-w-4xl mx-auto relative group">
-        <div class="absolute inset-0 bg-indigo-500/5 blur-2xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
-            <div class="relative glass rounded-2xl p-2 flex items-end space-x-2 border-white/10 shadow-2xl">
-            <button type="button" onclick="document.getElementById('attachment').click()" class="p-3 hover:bg-white/5 rounded-xl transition-colors">
-                    <i data-lucide="paperclip" class="w-5 h-5 text-slate-400"></i>
-                    <input type="file" name="attachment" id="attachment" class="hidden">
+     <form wire:submit.prevent="sendMessage">
+        <div class="p-6 bg-slate-950/30">
+            <div class="max-w-4xl mx-auto relative group">
+            <div class="absolute inset-0 bg-indigo-500/5 blur-2xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
+                <div class="relative glass rounded-2xl p-2 flex items-end space-x-2 border-white/10 shadow-2xl">
+                <button type="button" onclick="document.getElementById('attachment').click()" class="p-3 hover:bg-white/5 rounded-xl transition-colors">
+                        <i data-lucide="paperclip" class="w-5 h-5 text-slate-400"></i>
+                        <input type="file" name="attachment" id="attachment" class="hidden">
                 </button>
-                <textarea rows="1" placeholder="Type a message..."
-                    class="flex-1 bg-transparent border-none focus:ring-0 py-3 text-sm text-slate-200 placeholder-slate-500 resize-none max-h-32 custom-scrollbar"></textarea>
-                <div class="flex items-center p-1 space-x-1">
+                <textarea wire:model.live="message" rows="1" placeholder="Type a message..."
+                        class="flex-1 bg-transparent border-none focus:ring-0 py-3 text-sm text-slate-200 placeholder-slate-500 resize-none max-h-32 custom-scrollbar"></textarea>
+                        <div class="flex items-center p-1 space-x-1">
                     <button class="p-2.5 hover:bg-white/5 rounded-xl transition-colors">
                         <i data-lucide="smile" class="w-5 h-5 text-slate-400"></i>
                     </button>
-                <button class="p-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-lg shadow-indigo-600/30 group">
-                    <i data-lucide="send" class="w-5 h-5 text-white transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"></i>
+                    <button type="submit" class="p-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-all shadow-lg shadow-indigo-600/30 group">
+                        <i data-lucide="send" class="w-5 h-5 text-white transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"></i>
                     </button>
-                </div>
+                </div>  
             </div>
         </div>
-    </div>
+     </form>
     @else
         <div class="flex-1 flex items-center justify-center">
             <div class="text-center">
@@ -280,28 +308,51 @@ new class extends Component
 </main>
 </div>
 
-<!-- <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
-
-        // Mobile Sidebar Toggle
-        const sidebar = document.getElementById('sidebar');
-        const sidebarToggle = document.getElementById('sidebar-toggle');
-
-        if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', () => {
-                sidebar.classList.toggle('active');
-            });
+@script
+<script>
+    function initChatUI() {
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
         }
 
-        // Auto-scroll to bottom of messages
         const container = document.getElementById('messages-container');
-        container.scrollTop = container.scrollHeight;
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
 
-        // Auto-resize textarea
         const textarea = document.querySelector('textarea');
-        textarea.addEventListener('input', () => {
-            textarea.style.height = 'auto';
-            textarea.style.height = textarea.scrollHeight + 'px';
-        });
-    </script> -->
+        if (textarea && !textarea.dataset.initialized) {
+            textarea.addEventListener('input', () => {
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            });
+            textarea.dataset.initialized = 'true';
+        }
+    }
+
+    // Initialize on start
+    initChatUI();
+
+    // Listen for the custom event
+    $wire.on('conversation-updated', () => {
+        setTimeout(initChatUI, 50);
+    });
+
+    // Re-run on any Livewire update for this component
+    Livewire.hook('morph.updated', ({ el, component }) => {
+        if (component.id === $wire.__instance.id) {
+            initChatUI();
+        }
+    });
+
+    // Mobile Sidebar Toggle
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('#sidebar-toggle')) {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('active');
+            }
+        }
+    });
+</script>
+@endscript

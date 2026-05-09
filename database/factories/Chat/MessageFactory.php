@@ -12,7 +12,7 @@ class MessageFactory extends Factory
     {
         return [
             'conversation_id' =>3,
-            'sender_id' =>1,
+            'sender_id' =>rand(1,2),
             'message' => $this->faker->sentence,
             'is_read' => $this->faker->boolean,
         ];
