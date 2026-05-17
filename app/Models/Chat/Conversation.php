@@ -35,6 +35,6 @@ class Conversation extends Model
 
     public function unReadMessages()
     {
-        return $this->hasMany(Message::class)->where('sender_id','!=',Auth::id())->where('is_read',false);
+        return $this->hasMany(Message::class)->where('receiver_id',Auth::id())->where('is_read',false);
     }
 }
